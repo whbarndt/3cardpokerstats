@@ -47,23 +47,77 @@ struct Card
     int val;
 };
 
+vector<Card> generateAllCards(vector<char> suits, vector<int> values)
+{
+    vector<Card> all_cards;
+    for (int i = 0; i < suits.size(); i++)
+    {
+        for (int j = 0; j < values.size(); j++)
+        {
+            Card tempcard;
+            tempcard.suit = suits[i];
+            tempcard.val = values[j];
+            all_cards.push_back(tempcard);
+        }
+    }
+    return all_cards;
+}
+
+vector<vector<Card>> generateAllHands(vector<Card> all_cards)
+{
+    vector<vector<Card>> all_hands;
+    for (int i = 0; i < 50; ++i) 
+    {
+        for (int j = i + 1; j < 51; ++j) 
+        {
+            for (int k = j + 1; k < 52; ++k) 
+            {
+                vector<Card> temphand;
+                temphand.push_back(all_cards[i]);
+                temphand.push_back(all_cards[j]);
+                temphand.push_back(all_cards[k]);
+                all_hands.push_back(temphand);
+            }
+        }
+    }
+    cout << "Generated " << all_hands.size() << " hands!" << endl;
+    return all_hands;
+};
+
+void sortAllHands(vector<vector<Card>> &all_hands)
+{
+    for (int i = 0; i < all_hands.size(); i++)
+    {
+        //Bubble Sort - only because it's simple and efficiency isn't necessary
+        for (int j = 0; j < all_hands[i].size() - 1; j++)
+            for (int k = 0; k < all_hands[i].size() - j - 1; k++)
+                if (all_hands[i][k].val > all_hands[i][k + 1].val)
+                    swap(all_hands[i][k], all_hands[i][k + 1]);
+    }
+    cout << "Sorted!" << endl;
+}
+
 string computeRank(vector<Card> hand)
 {
     bool flush_flag = false;
     bool straight_flag = false;
 
+    // Checking for a flush
+    if (hand[0].suit == hand[1].suit && 
+        hand[1].suit == hand[2].suit && 
+        hand[2].suit == hand[0].suit)
+        flush_flag = true;
+    // Checking for a straight
+    if (hand[0].val == hand[1].val-1 && 
+        hand[1].val-1 == hand[2].val-2 && 
+        hand[0].val == hand[2].val-2)
+        straight_flag = true;
     // Checking for a royal flush
-    if (hand[0].val == 1 && hand[1].val == 12 && hand[2].val == 13)
+    if (hand[0].val == 1 && hand[1].val == 12 && hand[2].val == 13 && flush_flag)
         return "RF";
     // Checking for three aces
     if (hand[0].val == 1 && hand[1].val == 1 && hand[2].val == 1)
         return "3A";
-    // Checking for a flush
-    if (hand[0].suit == hand[1].suit && hand[1].suit == hand[2].suit && hand[2].suit == hand[0].suit)
-        flush_flag = true;
-    // Checking for a straight
-    if (hand[0].val == hand[1].val-1 && hand[1].val-1 == hand[2].val-2 && hand[0].val == hand[2].val-2)
-        straight_flag = true;
     // Checking for a straight flush
     if (flush_flag && straight_flag)
         return "SF";
@@ -84,95 +138,11 @@ string computeRank(vector<Card> hand)
     return "HC";
 };
 
-vector<Card> generateAllCards(vector<char> suits, vector<int> values)
+void addRankToCount(string rank, vector<string> ranks, vector<int> &rank_count)
 {
-    vector<Card> all_cards;
-    for (int i = 0; i < suits.size(); i++)
-    {
-        for (int j = 0; j < values.size(); j++)
-        {
-            Card tempcard;
-            tempcard.suit = suits[i];
-            tempcard.val = values[j];
-            all_cards.push_back(tempcard);
-        }
-    }
-    return all_cards;
-}
-
-vector<vector<Card>> generateAllHands(vector<Card> all_cards, bool perm_flag)
-{
-    vector<vector<Card>> all_hands;
-    
-    if (!perm_flag)
-    {
-        for (int a = 0; a < 50; ++a) 
-        {
-            for (int b = a + 1; b < 51; ++b) 
-            {
-                for (int c = b + 1; c < 52; ++c) 
-                {
-                    vector<Card> temphand;
-                    temphand.push_back(all_cards[a]);
-                    temphand.push_back(all_cards[b]);
-                    temphand.push_back(all_cards[c]);
-                    all_hands.push_back(temphand);
-                }
-            }
-        }
-    }
-    else
-    {
-        for (int a = 0; a < 52; ++a) 
-        {
-            for (int b = 1; b < 52; ++b) 
-            {
-                for (int c = 2; c < 52; ++c) 
-                {
-                    vector<Card> temphand;
-                    temphand.push_back(all_cards[a]);
-                    temphand.push_back(all_cards[b]);
-                    temphand.push_back(all_cards[c]);
-                    all_hands.push_back(temphand);
-                }
-            }
-        }       
-    }
-    cout << "Generated " << all_hands.size() << " hands!" << endl;
-    return all_hands;
-};
-
-void sortAllHands(vector<vector<Card>> &all_hands)
-{
-    for (int i = 0; i < all_hands.size(); i++)
-    {
-        //Bubble Sort - only because it's simple and efficiency isn't necessary
-        for (int j = 0; j < all_hands[i].size() - 1; j++)
-            for (int k = 0; k < all_hands[i].size() - j - 1; k++)
-                if (all_hands[i][k].val > all_hands[i][k + 1].val)
-                    swap(all_hands[i][k], all_hands[i][k + 1]);
-    }
-    cout << "Sorted!" << endl;
-}
-
-void computeHandStats(string rank, vector<string> ranks, vector<int> &rank_count)
-{
-    if (rank == ranks[0])
-        rank_count[0] += 1;
-    else if (rank == ranks[1])
-        rank_count[1] += 1;
-    else if (rank == ranks[2])
-        rank_count[2] += 1;
-    else if (rank == ranks[3])
-        rank_count[3] += 1;
-    else if (rank == ranks[4])
-        rank_count[4] += 1;
-    else if (rank == ranks[5])
-        rank_count[5] += 1;
-    else if (rank == ranks[6])
-        rank_count[6] += 1;
-    else
-        rank_count[7] += 1;
+    for(int i = 0; i < ranks.size(); i++)
+        if (rank == ranks[i])
+            rank_count[i] += 1;
 }
 
 vector<vector<Card>> createSelectHands()
@@ -192,33 +162,73 @@ vector<vector<Card>> createSelectHands()
     }
 }
 
-void drawCards(vector<Card> hand, vector<string> ranks, vector<vector<Card>> )
+bool CardsAreEqual(Card first, Card second)
 {
-    cout << "Your hand is: \n" << hand[0].suit << hand[0].val << "\n" << hand[1].suit << hand[1].val << "\n" << hand[2].suit << hand[2].val << endl;
+    bool is_equal = false;
+    if(first.suit == second.suit && first.val == second.val)
+        is_equal = true;
+    return is_equal;
+}
+
+int getPayoutOfRank(string rank, vector<string> ranks, vector<int> payout)
+{
+    for(int i = 0; i < ranks.size(); i++)
+        if(rank == ranks[i])
+            return payout[i];
+}
+
+vector<Card> getRemainingDeck(vector<Card> hand, vector<Card> all_cards)
+{
+    for(int i = 0; i < all_cards.size(); i++)
+        for(int j = 0; j < hand.size(); j++)
+            if(CardsAreEqual(hand[j], all_cards[j]))
+                all_cards.erase(all_cards.begin()+j);
+    return all_cards;
+}
+
+vector<vector<Card>> getPossibleHands(vector<Card> hand, vector<string> ranks, vector<int> payout, vector<Card> all_cards, vector<vector<Card>> all_hands)
+{
+
+}
+
+vector<int> computeExpectedValues(int num_cards_to_draw, vector<Card> hand, vector<string> ranks, vector<int> payout, vector<Card> all_cards, vector<vector<Card>> all_hands)
+{
+    vector<int> expvals;
+    vector<Card> remaining_cards = getRemainingDeck(hand, all_cards);
+    vector<vector<Card>> possible_hands;
+    vector<int> possible_hand_payouts;
+    //for(int i = 0; i < 3; i++)
+    if(num_cards_to_draw == 1)
+    {
+        //Replace 1st
+        for(int i = 0; i < expvals.size(); i++)
+        {
+            
+        }
+        //Replace 2nd
+        //Replace 3rd
+    }
+    for(int i = 0; i < expvals.size(); i++)
+        for(int j = 0; j < possible_hand_payouts.size(); j++)
+            expvals[i] += possible_hand_payouts[j] * (3 - hand.size())/remaining_cards.size();
+    return expvals;
+}
+
+void drawCards(vector<Card> hand, vector<string> ranks, vector<int> payout, vector<Card> all_cards, vector<vector<Card>> all_hands)
+{
+    cout << "Your hand is: \n" << hand[0].val << hand[0].suit << "\n" << hand[1].val << hand[1].suit << "\n" << hand[2].val << hand[2].suit << endl;
     int num_cards = 0;
-    string rank = computeRank(hand);
-    vector<int> rankcount;
-    computeHandStats(rank, ranks, rankcount);
-    //cout << "Your hand is: \n" << hand[0].suit << hand[0].val << "\n" << hand[1].suit << hand[1].val << "\n" << hand[2].suit << hand[2].val << endl;
-    cout << "How many cards would you like to replace? [Options: 0, 1, 2, 3]" << endl;
-    cin >> num_cards;
-    if (num_cards == 0)
+    string hand_rank = computeRank(hand);
+    int hand_payout = getPayoutOfRank(hand_rank, ranks, payout);
+    cout << "With a " << hand_rank << " rank hand and a payout of " << hand_payout << endl;
+    vector<vector<int>> expected_values;
+    expected_values.push_back(computeExpectedValues(1, hand, ranks, payout, all_cards, all_hands));
+    //expected_values.push_back(computeExpectedValues(2, hand, ranks, payout, all_cards, all_hands));
+    //expected_values.push_back(computeExpectedValues(3, hand, ranks, payout, all_cards, all_hands));
+    for(int i = 0; i < expected_values.size(); i++)
     {
-        
+        cout << "Expectation value for draw and replacing " << hand[i].suit << endl;
     }
-    else if(num_cards == 1)
-    {
-
-    }
-    else if(num_cards == 2)
-    {
-
-    }
-    else
-    {
-        
-    }
-    
 }
 
 void printChart(vector<string> ranks, vector<int> rank_count, vector<vector<Card>> all_hands, vector<double> prob, vector<int> payout, vector<double> returns)
@@ -248,17 +258,7 @@ int main()
         values[i] = i+1;
     vector<char> suits{'D', 'H', 'C', 'S'};
     vector<Card> all_cards = generateAllCards(suits, values);
-    vector<vector<Card>> all_hands;
-    
-    char input;
-    cout << "Would you like to generate permutations or combinations? [Options: 'P' or 'C']" << endl;
-    cin >> input;
-
-    if (input == 'C')
-        all_hands = generateAllHands(all_cards, false);
-    else
-        all_hands = generateAllHands(all_cards, true);
-
+    vector<vector<Card>> all_hands = generateAllHands(all_cards);
     sortAllHands(all_hands);
 
     vector<string> ranks_v2 = {"RF", "SF", "3A", "3K", "ST", "FL", "PR", "HC"};
@@ -274,17 +274,14 @@ int main()
     for(int i = 0; i < all_hands.size(); i++)
     {
         string rank = computeRank(all_hands[i]);
-        computeHandStats(rank, ranks_v2, rank_count_v2);
+        addRankToCount(rank, ranks_v2, rank_count_v2);
     }
 
     printChart(ranks_v2, rank_count_v2, all_hands, prob_v2, payout_v2, returns_v2);
 
-    /*
-    // Select Hands Statistics
-    for(int i = 0; i < select_hands.size(); i++)
-    {
-        string rank = computeRank(select_hands[i]);
-        computeHandStats(rank, ranks_v2, rank_count_v2);
-    }
-    */
+    int input = 0;
+    cout << "Pick a sample hand by choosing a number between 1 - 10: " << endl;
+    cin >> input;
+    vector<Card> selected_hand = select_hands[input];
+    //drawCards(selected_hand, ranks_v2, payout_v2, all_hands);
 }
