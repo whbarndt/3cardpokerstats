@@ -1,4 +1,6 @@
 /.vscode
-/3cardpoker.exe
+*.exe
 /sorted.txt
 /unsorted.txt
+test.cpp
+working.cpp

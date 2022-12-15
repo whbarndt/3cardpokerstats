@@ -34,6 +34,7 @@ Values:
 #include <numeric>
 #include <cstdlib>
 #include <algorithm>
+#include <math.h>
 using std::string;
 using std::vector;
 using std::cout;
@@ -42,6 +43,7 @@ using std::endl;
 using std::swap;
 using std::div;
 using std::max_element;
+using std::pow;
 
 struct Card
 {
@@ -65,7 +67,7 @@ vector<Card> generateAllCards(vector<char> suits, vector<int> values)
     return global_cards;
 }
 
-vector<vector<Card>> generateAllHands(vector<Card> global_cards)
+vector<vector<Card>> generateAllHands(vector<Card> &global_cards)
 {
     vector<vector<Card>> global_hands;
     for (int i = 0; i < 50; ++i) 
@@ -182,6 +184,7 @@ int getPayoutOfRank(string rank, vector<string> ranks, vector<int> payout)
     for(int i = 0; i < ranks.size(); i++)
         if(rank == ranks[i])
             return payout[i];
+    return 999;
 }
 
 vector<Card> getRemainingDeck(vector<Card> hand, vector<Card> global_cards)
@@ -193,48 +196,53 @@ vector<Card> getRemainingDeck(vector<Card> hand, vector<Card> global_cards)
     return global_cards;
 }
 
-vector<vector<Card>> getPossibleHands(int replaced_index, vector<Card> hand, vector<Card> remaining_cards, vector<Card> global_cards, vector<vector<Card>> global_hands)
+void getPossibleHands(vector<vector<vector<Card>>> &all_possible_hands, int num_cards_to_draw, vector<Card> hand, vector<Card> &remaining_cards, vector<Card> global_cards, vector<vector<Card>> global_hands)
 {
-    vector<vector<Card>> possible_hands;
-    for(int i = 0; i < remaining_cards.size(); i++)
-    {
-        hand[replaced_index] = remaining_cards[i];
-        possible_hands.push_back(hand); 
-    }
-    return possible_hands;
-}
-
-vector<double> computeExpectedValues(int num_cards_to_draw, vector<Card> hand, vector<string> ranks, vector<int> payout, vector<Card> global_cards, vector<vector<Card>> global_hands)
-{
-    vector<double> exp_vals;
-    vector<Card> remaining_cards = getRemainingDeck(hand, global_cards);
-    //for(int i = 0; i < expvals.size(); i++)
     // Last part that's hardcoded, couldn't figure out a way to abstract for n size hands
     if (num_cards_to_draw == 1)
     {
-        for(int i = 0; i < hand.size(); i++) // [i = 0 -> replace 0th index of hand with another card], goes with i reach hand size.
+        for(int replaced_index = 0; replaced_index < hand.size(); replaced_index++) // [i = 0 -> replace 0th index of hand with another card], goes with i reach hand size.
         {
-            double temp_exp_val = 0;
-            vector<vector<Card>> possible_hands = getPossibleHands(i, hand, remaining_cards, global_cards, global_hands);
-            sortCardsInHands(possible_hands);
-            vector<int> possible_hand_payouts;
-            for(int i = 0; i < possible_hands.size(); i++)
+            vector<vector<Card>> possible_hands(remaining_cards.size());
+            for(int card_in_deck = 0; card_in_deck < remaining_cards.size(); card_in_deck++)
             {
-                possible_hand_payouts.push_back(getPayoutOfRank(computeRank(possible_hands[i]), ranks, payout));
-                temp_exp_val += (double)possible_hand_payouts[i] * num_cards_to_draw/remaining_cards.size();
+                hand[replaced_index] = remaining_cards[card_in_deck];
+                possible_hands[card_in_deck] = hand; 
             }
-            exp_vals.push_back(temp_exp_val);
+            all_possible_hands.push_back(possible_hands);
         }
     }
-    //for(int i = 0; i < expvals.size(); i++)
-    //    for(int j = 0; j < possible_hand_payouts.size(); j++)
-    //        expvals[i] += possible_hand_payouts[j] * (3 - hand.size())/remaining_cards.size();
+    // if (num_cards_to_draw == 3)
+    // if (num_cards_to_draw == 2)
+}
+
+vector<double> computeExpectedValues(int num_cards_to_draw, vector<Card> &hand, vector<string> &ranks, vector<int> &payout, vector<Card> &global_cards, vector<vector<Card>> &global_hands)
+{
+    vector<double> exp_vals;
+    vector<Card> remaining_cards = getRemainingDeck(hand, global_cards);
+    // Get each set of hands for each type of card replacement - if implemented fully this would have 8 sets of sets of hands when I get rid of the if statements
+    // For general hand size if wanting to implement: //vector<vector<vector<Card>>> all_possible_hands(pow(2, hand.size())); 
+    vector<vector<vector<Card>>> all_possible_hands(hand.size());
+    getPossibleHands(all_possible_hands, num_cards_to_draw, hand, remaining_cards, global_cards, global_hands);
+    vector<vector<int>> possible_hand_payouts;
+    for(int possible_hand_configuration = 0; possible_hand_configuration < all_possible_hands.size(); possible_hand_configuration++)
+    {
+        double temp_exp_val = 0;
+        sortCardsInHands(all_possible_hands[possible_hand_configuration]);
+        for(int possible_hands = 0; possible_hands < all_possible_hands[possible_hand_configuration].size(); possible_hands++)
+        {
+            possible_hand_payouts[possible_hand_configuration].push_back(getPayoutOfRank(computeRank(all_possible_hands[possible_hand_configuration][possible_hands]), ranks, payout));
+            temp_exp_val += (double)possible_hand_payouts[possible_hand_configuration][possible_hands] * num_cards_to_draw/remaining_cards.size();
+        }
+        exp_vals.push_back(temp_exp_val);
+    }
     return exp_vals;
 }
 
-void drawCards(vector<Card> hand, vector<string> ranks, vector<int> payout, vector<Card> global_cards, vector<vector<Card>> global_hands)
+void drawCards(vector<Card> hand, vector<string> ranks, vector<int> payout, vector<Card> &global_cards, vector<vector<Card>> &global_hands)
 {
     cout << "Calculating expectation values for possible draws..." << endl;
+    int hand_choice = 0;
     vector<vector<double>> expected_values;
     // Generalized:
     // for(int i = 1; i <= hand.size(); i++)
@@ -250,10 +258,11 @@ void drawCards(vector<Card> hand, vector<string> ranks, vector<int> payout, vect
             cout << "If you replace " << hand[j].suit << hand[j].val << " you will get an expectation value of " << expected_values[i][j] << endl;
         }
     }
-    //cout << "Which type of draw would you like to make?" << endl;
+    cout << "Which hand would you like to make?" << endl;
+    //cin >> 
 }
 
-void printChart(vector<string> ranks, vector<int> rank_count, vector<vector<Card>> global_hands, vector<double> prob, vector<int> payout, vector<double> returns)
+void printChart(vector<string> ranks, vector<int> rank_count, vector<vector<Card>> &global_hands, vector<double> &prob, vector<int> &payout, vector<double> &returns)
 {
     double tot_return = 0;
     for (int i = 0; i < ranks.size(); i++)
@@ -318,4 +327,5 @@ int main()
     int selected_hand_payout = getPayoutOfRank(selected_hand_rank, ranks_v2, payouts_v2);
     cout << "With a " << selected_hand_rank << " rank hand and a payout and return of " << selected_hand_payout << endl;
     drawCards(selected_hand, ranks_v2, payouts_v2, global_cards, global_hands);
+    system("pause");
 }
