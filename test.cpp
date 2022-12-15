@@ -34,6 +34,7 @@ Values:
 #include <numeric>
 #include <cstdlib>
 #include <algorithm>
+#include <math.h>
 using std::string;
 using std::vector;
 using std::cout;
@@ -42,6 +43,7 @@ using std::endl;
 using std::swap;
 using std::div;
 using std::max_element;
+using std::pow;
 
 struct Card
 {
@@ -65,7 +67,7 @@ vector<Card> generateAllCards(vector<char> suits, vector<int> values)
     return global_cards;
 }
 
-vector<vector<Card>> generateAllHands(vector<Card> global_cards)
+vector<vector<Card>> generateAllHands(vector<Card> &global_cards)
 {
     vector<vector<Card>> global_hands;
     for (int i = 0; i < 50; ++i) 
@@ -182,6 +184,7 @@ int getPayoutOfRank(string rank, vector<string> ranks, vector<int> payout)
     for(int i = 0; i < ranks.size(); i++)
         if(rank == ranks[i])
             return payout[i];
+    return 999;
 }
 
 vector<Card> getRemainingDeck(vector<Card> hand, vector<Card> global_cards)
@@ -193,79 +196,80 @@ vector<Card> getRemainingDeck(vector<Card> hand, vector<Card> global_cards)
     return global_cards;
 }
 
-vector<vector<Card>> getPossibleHandsOneCardReplaced(int replaced_index, vector<Card> hand, vector<Card> remaining_cards, vector<Card> global_cards, vector<vector<Card>> global_hands)
+vector<vector<vector<Card>>> getPossibleHands(int num_cards_to_draw, vector<Card> hand, vector<Card> &remaining_cards, vector<Card> global_cards, vector<vector<Card>> global_hands)
 {
-    vector<vector<Card>> possible_hands;
-    for(int i = 0; i < remaining_cards.size(); i++)
+    // For general hand size if wanting to implement: //vector<vector<vector<Card>>> all_possible_hands(pow(2, hand.size())); 
+    vector<vector<vector<Card>>> all_possible_hands(hand.size());
+    // Last section of program that's hardcoded, couldn't figure out a way to abstract for n size hands (yet)
+    if (num_cards_to_draw == 1)
     {
-        hand[replaced_index] = remaining_cards[i];
-        possible_hands.push_back(hand); 
-    }
-    return possible_hands;
-}
-
-vector<vector<Card>> getPossibleHandsAllCardsReplaced(vector<Card> hand, vector<Card> remaining_cards, vector<Card> global_cards, vector<vector<Card>> global_hands)
-{
-    for(int i = 0; i < global_hands.size(); i++)
-    {
-        for(int j = 0; j < hand.size(); j++)
+        for(int replaced_index = 0; replaced_index < hand.size(); replaced_index++) // [i = 0 -> replace 0th index of hand with another card], goes with i reach hand size.
         {
-            if((hand[j].val == global_hands[i][0].val && hand[j].suit == global_hands[i][0].suit) || 
-               (hand[j].val == global_hands[i][1].val && hand[j].suit == global_hands[i][1].suit) ||
-               (hand[j].val == global_hands[i][2].val && hand[j].suit == global_hands[i][2].suit))
-                global_hands.erase(global_hands.begin()+i);
+            vector<vector<Card>> possible_hands;
+            for(int card_in_deck = 0; card_in_deck < remaining_cards.size(); card_in_deck++)
+            {
+                hand[replaced_index] = remaining_cards[card_in_deck];
+                possible_hands.push_back(hand); 
+            }
+            all_possible_hands.push_back(possible_hands);
         }
+        return all_possible_hands;
     }
-    return global_hands;
+    return all_possible_hands;
+    // if (num_cards_to_draw == 3)
+    // if (num_cards_to_draw == 2)
 }
 
-vector<double> computeExpectedValues(int num_cards_to_draw, vector<Card> hand, vector<string> ranks, vector<int> payout, vector<Card> global_cards, vector<vector<Card>> global_hands)
+vector<double> computeExpectedValues(int num_cards_to_draw, vector<Card> &hand, vector<string> &ranks, vector<int> &payout, vector<Card> &global_cards, vector<vector<Card>> &global_hands)
 {
     vector<double> exp_vals;
     vector<Card> remaining_cards = getRemainingDeck(hand, global_cards);
-    // Last part that's hardcoded, couldn't figure out a way to abstract for n size hands
-    if (num_cards_to_draw == 1)
-    {
-        for(int i = 0; i < hand.size(); i++) // [i = 0 -> replace 0th index of hand with another card], goes with i reach hand size.
-        {
-            double temp_exp_val = 0;
-            vector<vector<Card>> possible_hands = getPossibleHandsOneCardReplaced(i, hand, remaining_cards, global_cards, global_hands);
-            sortCardsInHands(possible_hands);
-            vector<int> possible_hand_payouts;
-            for(int j = 0; j < possible_hands.size(); j++)
-            {
-                possible_hand_payouts.push_back(getPayoutOfRank(computeRank(possible_hands[j]), ranks, payout));
-                temp_exp_val += (double)possible_hand_payouts[j] * num_cards_to_draw/remaining_cards.size();
-            }
-            exp_vals.push_back(temp_exp_val);
-        }
-        return exp_vals;
-    }
-    //if (num_cards_to_draw == 2) Not time to implement
-    /*
-    if (num_cards_to_draw == 3) Didn't get working in time
+    // Get each set of hands for each type of card replacement - if implemented fully this would have 8 sets of sets of hands when I get rid of the if statements
+    vector<vector<vector<Card>>> all_possible_hands = getPossibleHands(num_cards_to_draw, hand, remaining_cards, global_cards, global_hands);
+    vector<vector<int>> possible_hand_payouts;
+    for(int possible_hand_configuration = 0; possible_hand_configuration < all_possible_hands.size(); possible_hand_configuration++)
     {
         double temp_exp_val = 0;
-        vector<vector<Card>> possible_hands = getPossibleHandsAllCardsReplaced(hand, remaining_cards, global_cards, global_hands);
-        sortCardsInHands(possible_hands);
-        vector<int> possible_hand_payouts;
-        for(int j = 0; j < possible_hands.size(); j++)
+        sortCardsInHands(all_possible_hands[possible_hand_configuration]);
+        for(int possible_hands = 0; possible_hands < all_possible_hands[possible_hand_configuration].size(); possible_hands++)
         {
-            possible_hand_payouts.push_back(getPayoutOfRank(computeRank(possible_hands[j]), ranks, payout));
-            temp_exp_val += (double)possible_hand_payouts[j] * num_cards_to_draw/remaining_cards.size();
+            possible_hand_payouts[possible_hand_configuration].push_back(getPayoutOfRank(computeRank(all_possible_hands[possible_hand_configuration][possible_hands]), ranks, payout));
+            temp_exp_val += (double)possible_hand_payouts[possible_hand_configuration][possible_hands] * num_cards_to_draw/remaining_cards.size();
         }
         exp_vals.push_back(temp_exp_val);
     }
     return exp_vals;
-    */
 }
 
-void printChart(vector<string> ranks, vector<int> rank_count, vector<vector<Card>> hands, vector<double> prob, vector<int> payout, vector<double> returns)
+void drawCards(vector<Card> hand, vector<string> ranks, vector<int> payout, vector<Card> &global_cards, vector<vector<Card>> &global_hands)
+{
+    cout << "Calculating expectation values for possible draws..." << endl;
+    int hand_choice = 0;
+    vector<vector<double>> expected_values;
+    // Generalized:
+    // for(int i = 1; i <= hand.size(); i++)
+    // {
+    //     expected_values.push_back(computeExpectedValues(i, hand, ranks, payout, global_cards, global_hands));
+    // }
+    expected_values.push_back(computeExpectedValues(1, hand, ranks, payout, global_cards, global_hands));
+    for(int i = 0; i < expected_values.size(); i++)
+    {
+        cout << "Best expectation value for drawing and replacing " << i+1 << " cards is: " << *std::max_element(expected_values[i].begin(), expected_values[i].end()) << endl;
+        for(int j = 0; j < hand.size(); j++)
+        {
+            cout << "If you replace " << hand[j].suit << hand[j].val << " you will get an expectation value of " << expected_values[i][j] << endl;
+        }
+    }
+    cout << "Which hand would you like to make?" << endl;
+    //cin >> 
+}
+
+void printChart(vector<string> ranks, vector<int> rank_count, vector<vector<Card>> &global_hands, vector<double> &prob, vector<int> &payout, vector<double> &returns)
 {
     double tot_return = 0;
     for (int i = 0; i < ranks.size(); i++)
     {
-        double temp = (double)rank_count[i]/hands.size();
+        double temp = (double)rank_count[i]/global_hands.size();
         prob[i] = temp * 100;
         returns[i] = (double)prob[i] * payout[i];
         tot_return += returns[i];
@@ -273,74 +277,6 @@ void printChart(vector<string> ranks, vector<int> rank_count, vector<vector<Card
         cout << "Giving a return of " << returns[i] << endl;
     }
     cout << "Giving a total return of " << tot_return << endl;
-}
-
-void drawCards(vector<Card> hand, vector<string> ranks, vector<int> payouts, vector<Card> global_cards, vector<vector<Card>> global_hands)
-{
-    cout << "Calculating expectation values for possible draws..." << endl;
-    vector<vector<double>> expected_values;
-    // Generalized:
-    // for(int i = 1; i <= hand.size(); i++)
-    // {
-    //     expected_values.push_back(computeExpectedValues(i, hand, ranks, payout, global_cards, global_hands));
-    // }
-    expected_values.push_back(computeExpectedValues(1, hand, ranks, payouts, global_cards, global_hands));
-    //expected_values.push_back(computeExpectedValues(3, hand, ranks, payouts, global_cards, global_hands));
-    // Replace one card
-    cout << "Best expectation value for drawing and replacing " << 1 << " cards is: " << (double)*std::max_element(expected_values[0].begin(), expected_values[0].end()) << endl;
-    for(int j = 0; j < hand.size(); j++)
-    {
-        cout << "If you replace " << hand[j].suit << hand[j].val << " you will get an expectation value of " << expected_values[0][j] << endl;
-    }
-    // Replace all three cards
-    //cout << "Expectation value for drawing and replacing 3 cards is: " << expected_values[1][4] << endl;
-    int max_expectation_value = 0;
-    int i_index = 0;
-    int j_index = 0;
-    for(int i = 0; i < expected_values.size(); i++)
-    {
-        for(int j = 0; j < expected_values[i].size(); j++)
-        {
-            if(expected_values[i][j] > max_expectation_value)
-            {
-                max_expectation_value = expected_values[i][j];
-                i_index = i;
-                j_index = j;
-            }
-        }
-    }
-    string selected_hand_rank = computeRank(hand);
-    int selected_hand_payout = getPayoutOfRank(selected_hand_rank, ranks, payouts);
-    vector<int> rank_count_expectation_value_hand(ranks.size());
-    vector<double> prob_expectation_value_hand(ranks.size());
-    vector<double> returns_expectation_value_hand(ranks.size());
-    if(selected_hand_payout > max_expectation_value)
-    {
-        cout << "The best drawing choice is to keep your cards!" << endl;
-        cout << "The return table with the rest of the cards is" << endl;
-        vector<Card> remaining_cards = getRemainingDeck(hand, global_cards);
-        vector<vector<Card>> other_possible_hands = getPossibleHandsAllCardsReplaced(hand, remaining_cards, global_cards, global_hands);
-        for(int i = 0; i < other_possible_hands.size(); i++)
-        {
-            string rank = computeRank(other_possible_hands[i]);
-            addRankToCount(rank, ranks, rank_count_expectation_value_hand);
-        }
-        printChart(ranks, rank_count_expectation_value_hand, other_possible_hands, prob_expectation_value_hand, payouts, returns_expectation_value_hand);
-    }
-    else
-    {
-        cout << "The best drawing choice is to draw one card!" << endl;
-        cout << "If you replace " << hand[j_index].suit << hand[j_index].val << " you will get the best expectation value of " << expected_values[i_index][j_index] << "!" << endl;
-        cout << "The return table if you draw and replace this card would be.." << endl;
-        vector<Card> remaining_cards = getRemainingDeck(hand, global_cards);
-        vector<vector<Card>> possible_hands = getPossibleHandsOneCardReplaced(j_index, hand, remaining_cards, global_cards, global_hands);
-        for(int i = 0; i < possible_hands.size(); i++)
-        {
-            string rank = computeRank(possible_hands[i]);
-            addRankToCount(rank, ranks, rank_count_expectation_value_hand);
-        }
-        printChart(ranks, rank_count_expectation_value_hand, possible_hands, prob_expectation_value_hand, payouts, returns_expectation_value_hand);
-    }
 }
 
 int main()
@@ -386,11 +322,12 @@ int main()
     }
     cout << "Pick a sample hand by choosing a number between 1 - 10: " << endl;
     //cin >> input;
-    input = 4;
+    input = 10;
     vector<Card> selected_hand = select_hands[input-1];
     cout << "Your hand is: \n" << selected_hand[0].val << selected_hand[0].suit << "\n" << selected_hand[1].val << selected_hand[1].suit << "\n" << selected_hand[2].val << selected_hand[2].suit << endl;
     string selected_hand_rank = computeRank(selected_hand);
     int selected_hand_payout = getPayoutOfRank(selected_hand_rank, ranks_v2, payouts_v2);
     cout << "With a " << selected_hand_rank << " rank hand and a payout and return of " << selected_hand_payout << endl;
     drawCards(selected_hand, ranks_v2, payouts_v2, global_cards, global_hands);
+    system("pause");
 }
